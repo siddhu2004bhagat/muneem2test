@@ -59,24 +59,11 @@ async function initialize(language: string = 'eng+hin'): Promise<void> {
 
   try {
     // Initialize Tesseract.js with lazy loading
+    // Initialize Tesseract.js
+    // WARNING: Do NOT pass functions (like logger) into createWorker options in Vite worker environments,
+    // it will cause a DataCloneError across the worker boundary.
     console.log('[OCR Worker] Initializing Tesseract...');
-    tesseractWorker = await Tesseract.createWorker(language, 1, {
-      logger: (m: { status: string; progress: number }) => {
-        // Log progress for debugging
-        console.log('[OCR Worker] Progress:', m.status, m.progress);
-        if (m.status === 'loading tesseract core') {
-          postMessage({ type: 'progress', progress: 0.1, id: '' });
-        } else if (m.status === 'initializing tesseract') {
-          postMessage({ type: 'progress', progress: 0.3, id: '' });
-        } else if (m.status === 'loading language traineddata') {
-          postMessage({ type: 'progress', progress: 0.6, id: '' });
-        } else if (m.status === 'initializing api') {
-          postMessage({ type: 'progress', progress: 0.9, id: '' });
-        } else if (m.status === 'recognizing text') {
-          postMessage({ type: 'progress', progress: m.progress, id: '' });
-        }
-      }
-    }) as TesseractWorker;
+    tesseractWorker = await Tesseract.createWorker(language, 1) as any;
 
     console.log('[OCR Worker] Tesseract worker created, loading languages...');
 
