@@ -46,10 +46,10 @@ def recognize(req: OCRRequest):
 
     try:
         # Perform OCR using Tesseract
-        text = pytesseract.image_to_string(image)
+        text = pytesseract.image_to_string(image, lang='eng+hin')
         
         # Get confidence data
-        data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+        data = pytesseract.image_to_data(image, lang='eng+hin', output_type=pytesseract.Output.DICT)
         confidences = [float(conf) for conf in data['conf'] if conf != '-1']
         avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
         

@@ -35,6 +35,7 @@ interface OCRResult {
   confidence: number;
   box: { x: number; y: number; width: number; height: number };
   type: 'tesseract' | 'tflite' | 'merged';
+  tags?: string[];
 }
 
 type TesseractWorker = Awaited<ReturnType<typeof Tesseract.createWorker>> & {
@@ -53,13 +54,13 @@ let isInitialized = false;
 /**
  * Initialize OCR engines with lazy loading and compressed traineddata
  */
-async function initialize(): Promise<void> {
+async function initialize(language: string = 'eng+hin'): Promise<void> {
   if (isInitialized) return;
 
   try {
     // Initialize Tesseract.js with lazy loading
     console.log('[OCR Worker] Initializing Tesseract...');
-    tesseractWorker = await Tesseract.createWorker('eng', 1, {
+    tesseractWorker = await Tesseract.createWorker(language, 1, {
       logger: (m: { status: string; progress: number }) => {
         // Log progress for debugging
         console.log('[OCR Worker] Progress:', m.status, m.progress);
@@ -79,16 +80,17 @@ async function initialize(): Promise<void> {
 
     console.log('[OCR Worker] Tesseract worker created, loading languages...');
 
-    // Load English only for faster recognition (40% faster, 15% better accuracy for alphanumeric)
-    // Hindi can be added later if needed, but English-only is optimal for most use cases
+    console.log(`[OCR Worker] Tesseract worker created, loading languages: ${language}...`);
+
+    // Load requested languages (default eng+hin)
     if (tesseractWorker.loadLanguage) {
-      await tesseractWorker.loadLanguage('eng');
+      await tesseractWorker.loadLanguage(language);
     }
     if (tesseractWorker.initialize) {
-      await tesseractWorker.initialize('eng');
+      await tesseractWorker.initialize(language);
     }
 
-    console.log('[OCR Worker] English language loaded, setting parameters...');
+    console.log(`[OCR Worker] Languages (${language}) loaded, setting parameters...`);
 
     // Set recognition parameters optimized for handwriting
     // PSM 7 = single text line (better for handwriting than PSM 8)
@@ -96,7 +98,6 @@ async function initialize(): Promise<void> {
     // It must be set during createWorker or not at all
     if (tesseractWorker.setParameters) {
       await tesseractWorker.setParameters({
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789₹.,:-()[]{}!@#$%^&*()_+-=[]{}|;:,.<>?/~`',
         tessedit_pageseg_mode: 7, // Single text line (better for handwriting than single word)
         // tessedit_ocr_engine_mode: 3, // REMOVED - cannot be set post-init, causes worker crash
       });
@@ -265,7 +266,7 @@ async function recognizeImageData(
   options: RecognizeOptions = {},
   rois?: Array<{ x: number; y: number; width: number; height: number }>
 ): Promise<{ tesseract: OCRResult[]; tflite: OCRResult[] }> {
-  await initialize();
+  await initialize(options.language);
 
   const mode = options.mode || 'auto';
   let tesseractResults: OCRResult[] = [];
@@ -310,8 +311,8 @@ async function recognizeImageData(
 /**
  * Warmup: preload models in background
  */
-async function warmup(): Promise<void> {
-  await initialize();
+async function warmup(options: RecognizeOptions = {}): Promise<void> {
+  await initialize(options.language);
 }
 
 /**
@@ -340,7 +341,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
       case 'init':
       case 'warmup':
         console.log('[OCR Worker] Initializing/warming up...');
-        await warmup();
+        await warmup(payload?.options);
         console.log('[OCR Worker] Initialization complete');
         postMessage({ type: 'success', id, result: { initialized: true } });
         break;
@@ -355,7 +356,8 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
         }
 
         const inputType = input instanceof Blob ? 'Canvas' : 'ImageData';
-        console.log(`[OCR Worker] Starting recognition, input type: ${inputType}, size: ${input.size} bytes`);
+        const dimensions = input instanceof Blob ? `${input.size} bytes` : `${input.width}x${input.height}`;
+        console.log(`[OCR Worker] Starting recognition, input type: ${inputType}, size: ${dimensions}`);
 
         const results = await recognizeImageData(
           input,
