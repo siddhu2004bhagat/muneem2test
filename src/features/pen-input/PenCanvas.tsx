@@ -34,6 +34,7 @@ import { useNotebook } from './context/NotebookContext';
 import NotebookNav from './components/NotebookNav';
 import type { PenCanvasProps } from './types';
 import { drawTemplate } from './templates';
+import { isLinuxTablet } from '@/lib/platform';
 
 interface RecognitionResult {
   text: string;
@@ -197,12 +198,15 @@ function PenCanvasInner({ onRecognized, onClose }: PenCanvasProps) {
     return { x, y, pressure: Math.max(0.1, Math.min(1.0, pressure)) };
   };
 
-  const { onPointerDown, onPointerMove, onPointerUp } = usePointerEvents({
-    getPosition,
-    beginStroke,
-    extendStroke,
-    endStroke,
-  });
+  const { onPointerDown, onPointerMove, onPointerUp } = usePointerEvents(
+    {
+      getPosition,
+      beginStroke,
+      extendStroke,
+      endStroke,
+    },
+    { enablePalmRejection: !isLinuxTablet() } // Pi touchscreen: disable palm rejection (rejections block finger input)
+  );
 
   // Enhanced pointer up handler
   const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -608,7 +612,7 @@ function PenCanvasInner({ onRecognized, onClose }: PenCanvasProps) {
             style={{
               transform: `scale(${config.zoom}) translate(${config.pan.x}px, ${config.pan.y}px)`,
               transformOrigin: '0 0',
-              touchAction: 'pan-y pinch-zoom', // Allow two-finger scrolling while keeping single-touch drawing
+              touchAction: isLinuxTablet() ? 'none' : 'pan-y pinch-zoom', // Pi/tablet: capture all touches for drawing; desktop: allow two-finger scroll
               userSelect: 'none',
               WebkitUserSelect: 'none',
               WebkitTouchCallout: 'none'
