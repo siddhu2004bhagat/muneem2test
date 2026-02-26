@@ -121,8 +121,9 @@ export function usePointerEvents(
       return;
     }
 
-    // Legacy palm rejection (fallback for pen events or if enhanced is disabled)
-    if (e.pointerType === 'touch' && !enablePalmRejection) {
+    // Legacy palm rejection - only when palm rejection is ENABLED (skip when disabled for Pi/tablet)
+    // When disabled, accept all touches (finger input on Pi touchscreen)
+    if (e.pointerType === 'touch' && enablePalmRejection) {
       if (activePenRef.current) return;
       if ((e.width && e.width > 30) || (e.height && e.height > 30)) return;
     }
