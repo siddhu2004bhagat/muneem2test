@@ -1,17 +1,15 @@
 # OCR Service - Python Dependencies
-# Last updated: 2025-11-29
-# Using Tesseract OCR for M1 Mac compatibility
+# Pi 5 / Python 3.13 compatible - uses system Tesseract (apt install tesseract-ocr)
 
-# Web Framework
-fastapi==0.110.0
-uvicorn[standard]==0.29.0
+# Web Framework (flexible for Python 3.11–3.13)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
 
-# Image Processing
-Pillow==10.2.0
-opencv-python==4.6.0.66
+# Image Processing (Pillow 11+ has Python 3.13 pre-built wheels on piwheels)
+Pillow>=11.0.0
 
 # OCR Engine
-pytesseract==0.3.10
+pytesseract>=0.3.10
 
 # Utilities
 numpy>=1.24.0
