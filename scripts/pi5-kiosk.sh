@@ -40,7 +40,7 @@ done
 
 # Find Chromium binary (varies between Pi OS versions)
 CHROMIUM_CMD=""
-for cmd in chromium-browser chromium google-chrome; do
+for cmd in chromium chromium-browser google-chrome; do
     if command -v $cmd &>/dev/null; then
         CHROMIUM_CMD=$cmd
         break

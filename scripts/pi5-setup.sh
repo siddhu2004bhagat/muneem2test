@@ -46,9 +46,10 @@ sudo apt install -y \
     libtesseract-dev \
     libleptonica-dev \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1 \
+    libgl1-mesa-dri \
     libglib2.0-0 \
-    chromium-browser \
+    chromium \
     x11-xserver-utils \
     unclutter \
     xdotool \
