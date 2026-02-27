@@ -50,13 +50,18 @@ export function usePointerEvents(
   }, [palmRejection]);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    // CRITICAL: Prevent the scrollable container from treating this as a scroll gesture.
+    // On Pi, touchscreen fires as pointerType=mouse. Without preventDefault, the
+    // container's overflow-y-auto steals the drag and fires pointercancel, killing strokes.
+    e.preventDefault();
+
     // Two-finger scrolling detection: if there's already an active pointer, ignore this one
     if (activePointersRef.current.size > 0 && activePointerIdRef.current !== e.pointerId) {
       activePointersRef.current.add(e.pointerId);
       if (debugMode) {
         console.log('[PalmRejection] Multi-touch detected, ignoring pointer', e.pointerId);
       }
-      return; // Let browser handle scrolling
+      return;
     }
 
     // Enhanced palm rejection (if enabled)
@@ -149,6 +154,9 @@ export function usePointerEvents(
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activePointerIdRef.current !== e.pointerId) return;
+
+    // Prevent scroll container from cancelling the stroke mid-draw
+    e.preventDefault();
 
     const { x, y, pressure } = opts.getPosition(e);
 
