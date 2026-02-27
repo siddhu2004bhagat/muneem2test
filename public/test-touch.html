@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Touch Test</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #1a1a2e; color: white; }
+    #status {
+      padding: 20px;
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      background: #16213e;
+      min-height: 80px;
+    }
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: calc(100vh - 200px);
+      background: #0f3460;
+      cursor: crosshair;
+    }
+    #log {
+      padding: 10px;
+      font-size: 16px;
+      background: #000;
+      height: 120px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">👆 Touch anywhere in the blue area below</div>
+  <canvas id="canvas"></canvas>
+  <div id="log">Waiting for events...</div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const log = document.getElementById('log');
+    let eventCount = 0;
+
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function addLog(msg) {
+      eventCount++;
+      log.innerHTML = `[${eventCount}] ${msg}<br>` + log.innerHTML;
+    }
+
+    function drawDot(x, y, color, label) {
+      ctx.beginPath();
+      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.fillStyle = 'white';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(label, x - 15, y + 4);
+    }
+
+    // TOUCH EVENTS
+    canvas.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = t.clientX - rect.left;
+      const y = t.clientY - rect.top;
+      status.style.background = '#4CAF50';
+      status.innerHTML = '✅ TOUCH WORKS! (touchstart event fired)';
+      drawDot(x, y, '#4CAF50', 'T');
+      addLog(`TOUCHSTART x=${Math.round(x)} y=${Math.round(y)}`);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = t.clientX - rect.left;
+      const y = t.clientY - rect.top;
+      drawDot(x, y, '#81C784', 'M');
+    }, { passive: false });
+
+    // POINTER EVENTS
+    canvas.addEventListener('pointerdown', function(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const type = e.pointerType;
+      const color = type === 'touch' ? '#2196F3' : type === 'pen' ? '#9C27B0' : '#FF9800';
+      drawDot(x, y, color, 'P');
+      addLog(`POINTERDOWN type=${type} x=${Math.round(x)} y=${Math.round(y)}`);
+      if (type === 'touch') {
+        status.style.background = '#2196F3';
+        status.innerHTML = '✅ pointerType=TOUCH ✅ (drawing should work!)';
+      } else if (type === 'mouse') {
+        status.style.background = '#FF9800';
+        status.innerHTML = '⚠️ pointerType=MOUSE (touchscreen acting as mouse — this is the bug!)';
+      }
+    });
+
+    // MOUSE EVENTS (fallback)
+    canvas.addEventListener('mousedown', function(e) {
+      addLog(`MOUSEDOWN x=${Math.round(e.clientX)} y=${Math.round(e.clientY)}`);
+    });
+
+    addLog('Page loaded. maxTouchPoints=' + navigator.maxTouchPoints + ' platform=' + navigator.platform);
+  </script>
+</body>
+</html>
