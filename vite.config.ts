@@ -14,6 +14,14 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
     },
+    hmr: {
+      overlay: false,
+      timeout: 10000,
+    },
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
     allowedHosts: [
       'localhost',
       '.local',

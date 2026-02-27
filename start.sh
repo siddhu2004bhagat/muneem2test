@@ -115,3 +115,21 @@ fi
 echo "✅ Startup complete! Services running in background."
 echo "   To stop: ./stop.sh or kill processes on ports 5173, 8000, 9000"
 
+# ── Auto-reload Chromium on the Pi display (no keyboard needed) ────────────
+# Wait a bit more for Vite dev server to be fully ready
+sleep 4
+
+# Try X11 (xdotool) first, then Wayland fallback
+if [ -n "$DISPLAY" ] && command -v xdotool &>/dev/null; then
+    # X11: send Ctrl+Shift+R to the Chromium window
+    WID=$(xdotool search --onlyvisible --name "Chromium" 2>/dev/null | head -1)
+    if [ -n "$WID" ]; then
+        xdotool key --window "$WID" ctrl+shift+r 2>/dev/null
+        echo "🔄 Browser refreshed (X11/xdotool)"
+    fi
+elif command -v chromium &>/dev/null || command -v chromium-browser &>/dev/null; then
+    # Wayland/fallback: navigate to URL (opens new tab or reloads via remote debug)
+    CHROMIUM_CMD=$(command -v chromium || command -v chromium-browser)
+    DISPLAY=:0 "$CHROMIUM_CMD" "http://localhost:5173" 2>/dev/null &
+    echo "🔄 Browser reloaded (Chromium navigate)"
+fi
