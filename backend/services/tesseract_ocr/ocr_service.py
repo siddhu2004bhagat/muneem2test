@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pytesseract
 from typing import Optional
@@ -9,6 +10,14 @@ import numpy as np
 
 
 app = FastAPI(title="MUNEEM Tesseract OCR Service")
+
+# CORS: allow frontend (port 5173) to call OCR (port 9000) on Pi/Mac
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
