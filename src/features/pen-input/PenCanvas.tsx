@@ -612,7 +612,7 @@ function PenCanvasInner({ onRecognized, onClose }: PenCanvasProps) {
             style={{
               transform: `scale(${config.zoom}) translate(${config.pan.x}px, ${config.pan.y}px)`,
               transformOrigin: '0 0',
-              touchAction: isLinuxTablet() ? 'none' : 'pan-y pinch-zoom', // Pi/tablet: capture all touches for drawing; desktop: allow two-finger scroll
+              touchAction: 'none', // Always capture touches for drawing — never let browser scroll/zoom interfere
               userSelect: 'none',
               WebkitUserSelect: 'none',
               WebkitTouchCallout: 'none'

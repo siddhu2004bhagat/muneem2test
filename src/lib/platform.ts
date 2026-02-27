@@ -4,7 +4,9 @@
  */
 
 /**
- * Detect if running on Linux/ARM platform (Raspberry Pi)
+ * Detect if running on Linux/ARM platform (Raspberry Pi or Linux touchscreen device)
+ * Pi 5 has 4 cores. Chromium on Bookworm may not include 'arm' in UA.
+ * Most reliable signal: Linux + touch input capability.
  */
 export function isLinuxTablet(): boolean {
   if (typeof window === 'undefined') return false;
@@ -12,19 +14,33 @@ export function isLinuxTablet(): boolean {
   const userAgent = navigator.userAgent.toLowerCase();
   const platform = navigator.platform.toLowerCase();
 
-  // Check for Linux precisely, excluding Mac
-  const isLinux = (platform.includes('linux') || userAgent.includes('linux')) && !platform.includes('mac') && !userAgent.includes('mac');
+  // Must be Linux (not macOS, not Windows)
+  const isLinux =
+    (platform.includes('linux') || userAgent.includes('linux')) &&
+    !platform.includes('mac') &&
+    !userAgent.includes('mac') &&
+    !userAgent.includes('windows');
 
-  // Check for ARM architecture (common on Pi)
-  const isARM = userAgent.includes('arm') ||
-    navigator.hardwareConcurrency <= 4; // Pi 4 has 4 cores
+  if (!isLinux) return false;
 
-  // Check for low memory (Pi 4 typically has 4GB)
+  // On Linux, check for touch capability — Pi with touchscreen is a "Linux tablet"
+  const hasTouchScreen =
+    navigator.maxTouchPoints > 0 ||
+    'ontouchstart' in window;
+
+  // Check for ARM or low core count (Pi 4 = 4 cores, Pi 5 = 4 cores)
+  const isARM =
+    userAgent.includes('arm') ||
+    userAgent.includes('aarch') ||
+    navigator.hardwareConcurrency <= 4;
+
+  // Check for low memory (Pi 4/5 typically report 4GB or less)
   const hasLowMemory = (navigator as any).deviceMemory
     ? (navigator as any).deviceMemory <= 4
-    : true; // Assume low memory if deviceMemory API not available
+    : true; // Assume constrained if deviceMemory API not available
 
-  return isLinux && (isARM || hasLowMemory);
+  // Linux + touch + (ARM or low memory) = Raspberry Pi / Linux tablet
+  return hasTouchScreen && (isARM || hasLowMemory);
 }
 
 /**
