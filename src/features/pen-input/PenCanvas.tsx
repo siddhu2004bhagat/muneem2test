@@ -34,7 +34,7 @@ import { useNotebook } from './context/NotebookContext';
 import NotebookNav from './components/NotebookNav';
 import type { PenCanvasProps } from './types';
 import { drawTemplate } from './templates';
-import { isLinuxTablet } from '@/lib/platform';
+// isLinuxTablet import removed — palm rejection is now disabled unconditionally
 
 interface RecognitionResult {
   text: string;
@@ -205,8 +205,57 @@ function PenCanvasInner({ onRecognized, onClose }: PenCanvasProps) {
       extendStroke,
       endStroke,
     },
-    { enablePalmRejection: !isLinuxTablet() } // Pi touchscreen: disable palm rejection (rejections block finger input)
+    { enablePalmRejection: false } // Disabled: palm rejection only blocks touch/finger input. Pen/stylus input bypasses this anyway.
   );
+
+  // ── Native DOM listener fallback for Pi Chromium ──────────────────────────
+  // React's synthetic event system can miss pointer events on Pi/Linux Chromium.
+  // We register native (non-React) listeners directly on the canvas DOM node.
+  // These fire in the capture phase, guaranteeing delivery before any scroll logic.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleDown = (e: PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      canvas.setPointerCapture(e.pointerId);
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / config.zoom;
+      const y = (e.clientY - rect.top) / config.zoom;
+      const pressure = e.pressure > 0 ? e.pressure : 1;
+      beginStroke({ x, y, pressure, timestamp: performance.now() });
+    };
+    const handleMove = (e: PointerEvent) => {
+      if (!canvas.hasPointerCapture(e.pointerId)) return;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / config.zoom;
+      const y = (e.clientY - rect.top) / config.zoom;
+      const pressure = e.pressure > 0 ? e.pressure : 1;
+      extendStroke({ x, y, pressure, timestamp: performance.now() });
+    };
+    const handleUp = (e: PointerEvent) => {
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+      endStroke();
+    };
+
+    canvas.addEventListener('pointerdown', handleDown, { capture: true, passive: false });
+    canvas.addEventListener('pointermove', handleMove, { capture: true, passive: false });
+    canvas.addEventListener('pointerup', handleUp, { capture: true });
+    canvas.addEventListener('pointercancel', handleUp, { capture: true });
+
+    return () => {
+      canvas.removeEventListener('pointerdown', handleDown, { capture: true });
+      canvas.removeEventListener('pointermove', handleMove, { capture: true });
+      canvas.removeEventListener('pointerup', handleUp, { capture: true });
+      canvas.removeEventListener('pointercancel', handleUp, { capture: true });
+    };
+  }, [canvasRef, beginStroke, extendStroke, endStroke, config.zoom]);
+  // ─────────────────────────────────────────────────────────────────────────
+
 
   // Enhanced pointer up handler
   const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
